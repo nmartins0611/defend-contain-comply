@@ -1,0 +1,18 @@
+site:
+  title: "Defend, Contain, Comply — AAP Vulnerability Management Workshop"
+  start_page: modules::index.adoc
+
+content:
+  sources:
+    - url: .
+      start_path: content
+
+ui:
+  bundle:
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-one-2025/ui-bundle.zip
+    snapshot: true
+  supplemental_files:
+    - path: ./content/supplemental-ui
+
+output:
+  dir: ./www

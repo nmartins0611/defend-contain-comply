@@ -1,0 +1,31 @@
+---
+- name: Ensure build context exists
+  ansible.builtin.file:
+    path: "{{ build_context }}"
+    state: directory
+    mode: "0755"
+
+- name: Generate Containerfile
+  ansible.builtin.template:
+    src: Containerfile.j2
+    dest: "{{ build_context }}/Containerfile"
+    mode: "0644"
+  vars:
+    service_port: "{{ app_port }}"
+
+- name: Build image
+  containers.podman.podman_image:
+    name: "{{ registry_url }}/{{ container_name }}"
+    tag: "{{ container_tag }}"
+    path: "{{ build_context }}"
+    build:
+      file: Containerfile
+      format: oci
+  register: container_builder_result
+
+- name: Tag as latest
+  containers.podman.podman_tag:
+    image: "{{ registry_url }}/{{ container_name }}:{{ container_tag }}"
+    target_names:
+      - "{{ registry_url }}/{{ container_name }}:latest"
+  when: container_tag != "latest"

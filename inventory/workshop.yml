@@ -1,0 +1,29 @@
+---
+all:
+  children:
+    appservers:
+      hosts:
+        app-server:
+          ansible_host: "{{ app_server_ip }}"
+          ansible_user: "{{ workshop_user | default('lab-user') }}"
+      vars:
+        ansible_become: true
+        target_service: httpd
+        target_cve: CVE-2024-38476
+        target_advisory: RHSA-2024:5138
+
+    controllers:
+      hosts:
+        aap-controller:
+          ansible_host: "{{ controller_ip }}"
+
+    eda:
+      hosts:
+        eda-controller:
+          ansible_host: "{{ eda_ip }}"
+
+    registry:
+      hosts:
+        container-registry:
+          ansible_host: "{{ registry_ip | default(app_server_ip) }}"
+          registry_port: 5000

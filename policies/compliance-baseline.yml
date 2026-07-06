@@ -1,0 +1,71 @@
+---
+# Compliance Baseline Checks (CIS-lite)
+# Subset of CIS RHEL 9 Benchmark for workshop demonstration
+baseline:
+  name: meridian-financial-cis-lite
+  version: "1.0"
+  framework: "CIS RHEL 9 Benchmark v1.0 (subset)"
+  description: >
+    Lightweight compliance baseline for workshop environments.
+    Checks a representative subset of CIS controls.
+
+checks:
+  selinux_enforcing:
+    id: CIS-1.6.1.1
+    title: Ensure SELinux is not disabled in bootloader configuration
+    command: getenforce
+    expected: Enforcing
+    severity: critical
+
+  firewall_active:
+    id: CIS-3.4.1.1
+    title: Ensure firewalld is installed and running
+    service: firewalld
+    expected_state: active
+    severity: high
+
+  no_empty_passwords:
+    id: CIS-6.2.1
+    title: Ensure accounts do not have empty passwords
+    command: "awk -F: '($2 == \"\") {print $1}' /etc/shadow"
+    expected_empty: true
+    severity: critical
+
+  ssh_protocol_2:
+    id: CIS-5.2.4
+    title: Ensure SSH protocol is set to 2
+    file: /etc/ssh/sshd_config
+    pattern: "^Protocol\\s+2"
+    severity: medium
+
+  core_dumps_restricted:
+    id: CIS-1.5.1
+    title: Ensure core dumps are restricted
+    file: /etc/security/limits.conf
+    pattern: "\\*\\s+hard\\s+core\\s+0"
+    severity: medium
+
+  sysctl_ip_forwarding:
+    id: CIS-3.2.1
+    title: Ensure IP forwarding is disabled
+    sysctl: net.ipv4.ip_forward
+    expected_value: "0"
+    severity: medium
+
+  aide_installed:
+    id: CIS-1.3.1
+    title: Ensure AIDE is installed
+    package: aide
+    expected_state: present
+    severity: high
+
+  cron_restricted:
+    id: CIS-5.1.8
+    title: Ensure cron is restricted to authorized users
+    file: /etc/cron.allow
+    expected_exists: true
+    severity: medium
+
+scoring:
+  pass_threshold: 80
+  critical_must_pass: true

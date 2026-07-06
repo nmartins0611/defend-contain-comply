@@ -1,0 +1,69 @@
+include::partial$_attributes.adoc[]
+
+= Conclusion
+:source-highlighter: rouge
+
+== Workshop Complete
+
+Congratulations — you've completed the **Defend, Contain, Comply** workshop.
+
+== What you built
+
+Over the past 120 minutes, you managed a complete vulnerability lifecycle:
+
+[cols="1,2,2",options="header"]
+|===
+| Phase | What Happened | AAP Capabilities Used
+
+| **DEFEND**
+| Critical CVE detected → automated containment in seconds
+| EDA webhooks, rulebooks, workflow triggers, firewalld, SELinux
+
+| **CONTAIN**
+| Errata published → policy-gated patch with compliance evidence
+| Workflow templates, approval nodes, assertions, set_stats, reporting
+
+| **COMPLY**
+| Hardened app → containerized, scanned, pushed to trusted registry
+| containers.podman, image labels, non-root builds, registry operations
+|===
+
+== Business outcomes demonstrated
+
+* **Mean-time-to-contain**: From 45+ minutes (manual SSH) to seconds (EDA + workflow)
+* **Policy enforcement**: Zero patches applied without passing all gates
+* **Audit readiness**: Compliance reports generated automatically as workflow artifacts
+* **Supply chain trust**: Every container image traceable to specific advisory remediation
+
+== Architecture recap
+
+The complete flow you automated:
+
+....
+Splunk Alert → EDA Webhook → Containment Workflow
+                                    ↓
+                          Patch Available Notification
+                                    ↓
+                    Pre-Patch Policy → Approval → Patch → Verify → Report
+                                                                      ↓
+                                                    Container Build → Scan → Push
+....
+
+== Taking this further
+
+* **Scale**: Add more hosts to inventory and use job slicing for parallel patching
+* **Real Splunk**: Replace the simulated webhook with a live Splunk HEC integration
+* **Image signing**: Add `cosign` signing to the supply chain (provenance attestation)
+* **GitOps**: Trigger container builds from Git commits to the Containerfile
+* **ITSM integration**: Connect approval nodes to ServiceNow or Jira for change tickets
+
+== Resources
+
+* https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform/2.5[AAP 2.5 Documentation]
+* https://ansible.readthedocs.io/projects/rulebook/[Event-Driven Ansible Rulebook Reference]
+* https://docs.podman.io/[Podman Documentation]
+* https://access.redhat.com/security/cve/CVE-2024-38476[CVE-2024-38476 Advisory]
+
+== Feedback
+
+Your feedback helps improve this workshop. Please share your experience with the facilitator or submit issues to the workshop repository.

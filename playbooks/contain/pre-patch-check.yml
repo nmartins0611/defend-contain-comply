@@ -1,0 +1,63 @@
+---
+- name: Pre-patch policy compliance check
+  hosts: appservers
+  gather_facts: true
+
+  vars:
+    maintenance_window_start: "06:00"
+    maintenance_window_end: "10:00"
+    required_backup_age_hours: 24
+    backup_marker_path: /var/log/last-backup-timestamp
+
+  tasks:
+    - name: "POLICY GATE: Check maintenance window"
+      ansible.builtin.assert:
+        that:
+          - ansible_date_time.hour | int >= (maintenance_window_start | split(':') | first | int)
+          - ansible_date_time.hour | int < (maintenance_window_end | split(':') | first | int)
+        fail_msg: >-
+          POLICY VIOLATION: Current time {{ ansible_date_time.time }} is outside the
+          maintenance window ({{ maintenance_window_start }}-{{ maintenance_window_end }}).
+          Patching not permitted.
+        success_msg: "Within maintenance window - patching permitted."
+      when: enforce_maintenance_window | default(true) | bool
+
+    - name: "POLICY GATE: Verify recent backup exists"
+      ansible.builtin.stat:
+        path: "{{ backup_marker_path }}"
+      register: _backup_marker
+
+    - name: "POLICY GATE: Check backup freshness"
+      ansible.builtin.assert:
+        that:
+          - _backup_marker.stat.exists
+          - (ansible_date_time.epoch | int - _backup_marker.stat.mtime | int) < (required_backup_age_hours * 3600)
+        fail_msg: >-
+          POLICY VIOLATION: No backup found within the last {{ required_backup_age_hours }} hours.
+          Last backup marker: {{ backup_marker_path }}
+        success_msg: "Backup is current (within {{ required_backup_age_hours }}h)."
+
+    - name: "POLICY GATE: Verify target service is running"
+      ansible.builtin.systemd:
+        name: "{{ target_service | default('httpd') }}"
+      register: _service_state
+
+    - name: Assert service is operational before patching
+      ansible.builtin.assert:
+        that:
+          - _service_state.status.ActiveState == "active"
+        fail_msg: "POLICY VIOLATION: {{ target_service }} is not running. Investigate before patching."
+        success_msg: "Service {{ target_service }} is active."
+
+    - name: "POLICY GATE: Check disk space (minimum 2GB free on /)"
+      ansible.builtin.assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int > 2147483648
+        fail_msg: "POLICY VIOLATION: Less than 2GB free on /. Cannot safely patch."
+        success_msg: "Sufficient disk space available."
+
+    - name: Record policy check pass
+      ansible.builtin.set_stats:
+        data:
+          pre_patch_policy_passed: true
+          policy_check_timestamp: "{{ ansible_date_time.iso8601 }}"

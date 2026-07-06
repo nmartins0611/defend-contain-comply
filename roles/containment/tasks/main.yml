@@ -1,0 +1,38 @@
+---
+- name: Restrict firewall to internal sources only
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ item }} service name={{ target_service }} accept"
+    permanent: true
+    immediate: true
+    state: enabled
+    zone: "{{ containment_zone }}"
+  loop: "{{ allowed_sources }}"
+
+- name: Revoke public service access
+  ansible.posix.firewalld:
+    service: "{{ target_service }}"
+    permanent: true
+    immediate: true
+    state: disabled
+    zone: public
+
+- name: Enforce SELinux containment booleans
+  ansible.posix.seboolean:
+    name: "{{ item }}"
+    state: false
+    persistent: true
+  loop: "{{ selinux_booleans_disable }}"
+
+- name: Deploy containment security headers
+  ansible.builtin.template:
+    src: security-containment.conf.j2
+    dest: "/etc/{{ target_service }}/conf.d/security-containment.conf"
+    mode: "0644"
+  notify: Restart contained service
+
+- name: Record containment event
+  ansible.builtin.lineinfile:
+    path: /var/log/containment-actions.log
+    line: "{{ ansible_date_time.iso8601 }} | CONTAINED | {{ target_service }} | {{ inventory_hostname }}"
+    create: true
+    mode: "0640"

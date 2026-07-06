@@ -1,0 +1,5 @@
+---
+- name: Restart contained service
+  ansible.builtin.systemd:
+    name: "{{ target_service }}"
+    state: restarted
