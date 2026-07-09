@@ -19,18 +19,28 @@ You are a platform engineer at **Meridian Financial**. A Splunk alert fires: a c
 ## Repository Layout
 
 ```
+setup/              Pre-work playbooks (run by framework provisioner)
+  deploy-central-services.yml   Splunk + OPA containers on central
+  configure-errata-repo.yml     Yum errata repo on central
+  configure-app-server.yml      Vulnerable httpd + SELinux on rhel01
+  configure-aap.yml             AAP job/workflow templates
+  configure-eda.yml             EDA rulebook activation
+  configure-vault.yml           Vault KV paths
+  configure-splunk-alerts.yml   Splunk saved searches + webhook
+  main.yml                      Master orchestrator
+  vars/workshop.yml             Shared variables
+  files/                        updateinfo.xml, OPA policies
+  templates/                    Jinja2 templates (errata-repo.repo.j2)
 playbooks/          Ansible playbooks organized by exercise
   defend/           Exercise 1: scan, contain, harden
   contain/          Exercise 2: pre-patch, patch, verify, report
   comply/           Exercise 3: build, scan, push container
 rulebooks/          Event-Driven Ansible rulebook definitions
 policies/           Policy-as-code gate definitions
-roles/              Reusable roles (cve_scanner, containment, patching, container_builder)
 templates/          Jinja2 templates, sample payloads, Containerfile
-inventory/          Workshop inventory
+inventory/          Workshop inventory (workshop.yml)
 collections/        Galaxy collection requirements
-content/            Showroom AsciiDoc lab guide (Antora)
-provisioner/        RHDP / AgnosticD provisioner config (future)
+NotUsed/            Unused files from initial scaffolding
 ```
 
 ## Prerequisites

@@ -1,0 +1,328 @@
+---
+- name: Configure AAP Controller for DCC workshop
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  vars_files:
+    - vars/workshop.yml
+
+  vars:
+    controller_oauth_token: "{{ controller_oauth_token_override | default(omit) }}"
+
+  module_defaults:
+    group/ansible.controller.controller:
+      controller_host: "{{ aap_host }}"
+      controller_username: "{{ aap_user }}"
+      controller_password: "{{ aap_password }}"
+      controller_oauthtoken: "{{ controller_oauth_token | default(omit) }}"
+      validate_certs: false
+
+  tasks:
+    # ── Credential ─────────────────────────────────────────────────────
+    - name: Create machine credential for app server
+      ansible.controller.credential:
+        name: "{{ workshop_credential_name }}"
+        organization: "{{ workshop_org }}"
+        credential_type: Machine
+        inputs:
+          username: rhel
+          password: "{{ aap_password }}"
+          become_method: sudo
+          become_username: root
+        state: present
+
+    # ── Project ────────────────────────────────────────────────────────
+    - name: Create DCC workshop project
+      ansible.controller.project:
+        name: "{{ workshop_project_name }}"
+        organization: "{{ workshop_org }}"
+        scm_type: git
+        scm_url: "{{ gitea_url }}/{{ gitea_repo }}.git"
+        scm_branch: master
+        scm_update_on_launch: false
+        state: present
+      register: _project
+
+    - name: Sync project from SCM
+      ansible.controller.project_update:
+        project: "{{ workshop_project_name }}"
+        wait: true
+        timeout: 120
+
+    # ── Inventory ──────────────────────────────────────────────────────
+    - name: Create DCC workshop inventory
+      ansible.controller.inventory:
+        name: "{{ workshop_inventory_name }}"
+        organization: "{{ workshop_org }}"
+        variables:
+          ansible_become: true
+          target_service: httpd
+          target_cve: "{{ target_cve }}"
+          target_advisory: "{{ target_advisory }}"
+        state: present
+
+    - name: Add appservers group
+      ansible.controller.group:
+        name: appservers
+        inventory: "{{ workshop_inventory_name }}"
+        state: present
+
+    - name: Add app-server host
+      ansible.controller.host:
+        name: app-server
+        inventory: "{{ workshop_inventory_name }}"
+        variables:
+          ansible_host: "{{ app_server_ip | default('rhel01') }}"
+        state: present
+
+    - name: Add app-server to appservers group
+      ansible.controller.group:
+        name: appservers
+        inventory: "{{ workshop_inventory_name }}"
+        hosts:
+          - app-server
+        preserve_existing_hosts: true
+        state: present
+
+    # ── Job Templates (Module 1: DEFEND) ───────────────────────────────
+    - name: Create job template -- Scan System
+      ansible.controller.job_template:
+        name: "Scan System"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/defend/scan-system.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          target_cve: "{{ target_cve }}"
+        state: present
+
+    - name: Create job template -- Contain Service
+      ansible.controller.job_template:
+        name: "Contain Service"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/defend/contain-service.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    - name: Create job template -- Harden Posture
+      ansible.controller.job_template:
+        name: "Harden Posture"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/defend/harden-posture.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    # ── Job Templates (Module 2: CONTAIN) ──────────────────────────────
+    - name: Create job template -- Pre-Patch Check
+      ansible.controller.job_template:
+        name: "Pre-Patch Check"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/contain/pre-patch-check.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          enforce_maintenance_window: false
+        state: present
+
+    - name: Create job template -- Patch System
+      ansible.controller.job_template:
+        name: "Patch System"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/contain/patch-system.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          target_advisory: "{{ target_advisory }}"
+        state: present
+
+    - name: Create job template -- Post-Patch Verify
+      ansible.controller.job_template:
+        name: "Post-Patch Verify"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/contain/post-patch-verify.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          target_cve: "{{ target_cve }}"
+        state: present
+
+    - name: Create job template -- Report Compliance
+      ansible.controller.job_template:
+        name: "Report Compliance"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/contain/report-compliance.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          target_cve: "{{ target_cve }}"
+          target_advisory: "{{ target_advisory }}"
+        state: present
+
+    # ── Job Templates (Module 3: COMPLY) ───────────────────────────────
+    - name: Create job template -- Build Container
+      ansible.controller.job_template:
+        name: "Build Container"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/build-container.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    - name: Create job template -- Scan Image
+      ansible.controller.job_template:
+        name: "Scan Image"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/scan-image.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    - name: Create job template -- Push to Registry
+      ansible.controller.job_template:
+        name: "Push to Registry"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/push-to-registry.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    # ── Workflow: Vulnerability Containment ────────────────────────────
+    - name: Create workflow -- Vulnerability Containment
+      ansible.controller.workflow_job_template:
+        name: "Vulnerability Containment"
+        organization: "{{ workshop_org }}"
+        inventory: "{{ workshop_inventory_name }}"
+        state: present
+
+    - name: Build Vulnerability Containment workflow nodes
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Vulnerability Containment"
+        identifier: "{{ item.id }}"
+        unified_job_template: "{{ item.template }}"
+        organization: "{{ workshop_org }}"
+        state: present
+      loop:
+        - { id: scan, template: "Scan System" }
+        - { id: contain, template: "Contain Service" }
+        - { id: harden, template: "Harden Posture" }
+
+    - name: Link Vulnerability Containment workflow -- scan to contain
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Vulnerability Containment"
+        identifier: contain
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - scan
+        state: present
+
+    - name: Link Vulnerability Containment workflow -- contain to harden
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Vulnerability Containment"
+        identifier: harden
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - contain
+        state: present
+
+    # ── Workflow: Policy-Gated Patching ────────────────────────────────
+    - name: Create workflow -- Policy-Gated Patching
+      ansible.controller.workflow_job_template:
+        name: "Policy-Gated Patching"
+        organization: "{{ workshop_org }}"
+        inventory: "{{ workshop_inventory_name }}"
+        state: present
+
+    - name: Build Policy-Gated Patching workflow nodes
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: "{{ item.id }}"
+        unified_job_template: "{{ item.template }}"
+        organization: "{{ workshop_org }}"
+        state: present
+      loop:
+        - { id: precheck, template: "Pre-Patch Check" }
+        - { id: patch, template: "Patch System" }
+        - { id: verify, template: "Post-Patch Verify" }
+        - { id: report, template: "Report Compliance" }
+
+    - name: Create approval node for patching workflow
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: approval
+        approval_node:
+          name: "Approve Patch Application"
+          description: "Security team approval required before applying {{ target_advisory }}"
+          timeout: 900
+        organization: "{{ workshop_org }}"
+        state: present
+
+    - name: Link patching workflow -- precheck to approval
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: approval
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - precheck
+        state: present
+
+    - name: Link patching workflow -- approval to patch
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: patch
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - approval
+        state: present
+
+    - name: Link patching workflow -- patch to verify
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: verify
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - patch
+        state: present
+
+    - name: Link patching workflow -- verify to report
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Policy-Gated Patching"
+        identifier: report
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - verify
+        state: present
+
+    # ── Verification ───────────────────────────────────────────────────
+    - name: Report AAP configuration status
+      ansible.builtin.debug:
+        msg: |
+          AAP Controller configured for DCC workshop:
+            Project:    {{ workshop_project_name }}
+            Inventory:  {{ workshop_inventory_name }}
+            Credential: {{ workshop_credential_name }}
+            Job Templates:      10 (3 defend + 4 contain + 3 comply)
+            Workflows:          2 (Vulnerability Containment, Policy-Gated Patching)
+            Approval node:      Approve Patch Application (15 min timeout)
