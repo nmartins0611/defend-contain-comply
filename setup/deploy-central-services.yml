@@ -51,7 +51,7 @@
       containers.podman.podman_container:
         name: "{{ splunk_container_name }}"
         image: "{{ splunk_image }}"
-        hostname: splunk.dcc.lab
+        hostname: splunk
         privileged: true
         state: started
         ports:

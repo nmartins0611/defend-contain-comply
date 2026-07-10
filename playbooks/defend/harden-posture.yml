@@ -1,18 +1,10 @@
 ---
-- name: Harden system security posture
+- name: Emergency posture hardening (containment phase)
   hosts: appservers
   gather_facts: true
 
   vars:
     aide_db_path: /var/lib/aide/aide.db.gz
-    sysctl_hardening:
-      net.ipv4.conf.all.accept_redirects: 0
-      net.ipv4.conf.default.accept_redirects: 0
-      net.ipv4.conf.all.send_redirects: 0
-      net.ipv4.conf.all.accept_source_route: 0
-      net.ipv4.conf.all.log_martians: 1
-      net.ipv6.conf.all.accept_redirects: 0
-      kernel.randomize_va_space: 2
 
   tasks:
     - name: Enforce SELinux booleans for httpd containment
@@ -25,15 +17,6 @@
         - { name: httpd_can_sendmail, state: false }
         - { name: httpd_enable_cgi, state: false }
         - { name: httpd_use_nfs, state: false }
-
-    - name: Apply kernel sysctl hardening
-      ansible.posix.sysctl:
-        name: "{{ item.key }}"
-        value: "{{ item.value }}"
-        sysctl_set: true
-        reload: true
-        state: present
-      loop: "{{ sysctl_hardening | dict2items }}"
 
     - name: Install AIDE for file integrity monitoring
       ansible.builtin.dnf:
@@ -61,40 +44,9 @@
         job: "/usr/sbin/aide --check | /usr/bin/logger -t aide-check"
         user: root
 
-    - name: Restrict cron access to root only
-      ansible.builtin.file:
-        path: /etc/cron.allow
-        state: touch
-        owner: root
-        group: root
-        mode: "0600"
-
-    - name: Ensure only root in cron.allow
-      ansible.builtin.lineinfile:
-        path: /etc/cron.allow
-        line: root
-        create: true
-        mode: "0600"
-
-    - name: Set restrictive umask in login.defs
-      ansible.builtin.lineinfile:
-        path: /etc/login.defs
-        regexp: "^UMASK"
-        line: "UMASK 027"
-
-    - name: Disable core dumps
-      ansible.builtin.lineinfile:
-        path: /etc/security/limits.conf
-        line: "* hard core 0"
-        create: true
-        mode: "0644"
-
     - name: Report hardening completion
       ansible.builtin.debug:
         msg: |
-          System hardening complete on {{ inventory_hostname }}:
-          - SELinux booleans enforced (httpd network/cgi/nfs disabled)
-          - Kernel sysctl parameters hardened
-          - AIDE file integrity monitoring active
-          - Core dumps disabled
-          - Cron restricted to root
+          Emergency posture hardening complete on {{ inventory_hostname }}:
+            - SELinux booleans enforced (httpd network/cgi/nfs disabled)
+            - AIDE file integrity monitoring active

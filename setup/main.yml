@@ -3,7 +3,7 @@
 #
 # Runs all setup playbooks in dependency order:
 #   Phase 0: Central services (Splunk + OPA containers)
-#   Phase 1: System-level (errata repo, app server, vault -- can run in parallel)
+#   Phase 1: System-level (errata repo, app server -- can run in parallel)
 #   Phase 2: Splunk alerts (requires central VM services)
 #   Phase 3: AAP + EDA (requires Gitea repo and running controllers)
 
@@ -17,9 +17,6 @@
 
 - name: "Phase 1b: Prepare app server for workshop"
   ansible.builtin.import_playbook: configure-app-server.yml
-
-- name: "Phase 1c: Configure Vault credentials"
-  ansible.builtin.import_playbook: configure-vault.yml
 
 # ── Phase 2: SIEM Integration ────────────────────────────────────────
 - name: "Phase 2: Configure Splunk alerts and webhook"

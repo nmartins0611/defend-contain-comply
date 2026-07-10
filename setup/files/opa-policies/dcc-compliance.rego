@@ -1,116 +1,108 @@
 package dcc.compliance
 
-# DCC Workshop Compliance Policy
-#
-# Evaluates host security posture for the Defend, Contain, Comply workshop.
-# Input: JSON object with host facts collected by Ansible or the scan playbook.
-#
-# Example input:
-#   {
-#     "httpd_version": "2.4.57-5.el9",
-#     "patched_version": "2.4.62-1.el9",
-#     "selinux_mode": "Enforcing",
-#     "open_cves": ["CVE-2024-38476"],
-#     "backup_age_hours": 12,
-#     "patch_approved": false,
-#     "firewall_active": true
-#   }
-
 import rego.v1
+
+# System compliance baselines for the DCC workshop.
+# Input: JSON object with host facts collected by the compliance-audit playbook.
 
 default compliant := false
 
-default httpd_vulnerable := false
+# ── SELinux ─────────────────────────────────────────────────────────
 
-default selinux_enforcing := false
-
-default backup_current := false
-
-default firewall_active := false
-
-# httpd is vulnerable when installed version does not match patched version
-httpd_vulnerable if {
-	input.httpd_version != input.patched_version
-}
-
-# SELinux must be in enforcing mode
 selinux_enforcing if {
 	input.selinux_mode == "Enforcing"
 }
 
-# Backup is current if taken within 24 hours
-backup_current if {
-	input.backup_age_hours < 24
-}
+# ── Firewall ────────────────────────────────────────────────────────
 
-# Firewall must be active
 firewall_active if {
 	input.firewall_active == true
 }
 
-# Patch is approved for application
-patch_approved if {
-	input.patch_approved == true
+# ── SSH Hardening ───────────────────────────────────────────────────
+
+ssh_root_login_disabled if {
+	input.ssh_permit_root_login == "no"
 }
 
-# Collect all findings as a set of objects
-findings contains finding if {
-	httpd_vulnerable
-	finding := {
-		"rule": "httpd_vulnerable",
-		"severity": "critical",
-		"message": sprintf("httpd %s has known vulnerabilities; patched version is %s", [input.httpd_version, input.patched_version]),
-	}
+ssh_x11_forwarding_disabled if {
+	input.ssh_x11_forwarding == "no"
 }
 
-findings contains finding if {
-	not selinux_enforcing
-	finding := {
-		"rule": "selinux_enforcing",
-		"severity": "high",
-		"message": sprintf("SELinux is %s, must be Enforcing", [input.selinux_mode]),
-	}
+ssh_max_auth_tries_ok if {
+	input.ssh_max_auth_tries <= 4
 }
 
-findings contains finding if {
-	not backup_current
-	finding := {
-		"rule": "backup_current",
-		"severity": "medium",
-		"message": sprintf("Last backup was %d hours ago, exceeds 24h threshold", [input.backup_age_hours]),
-	}
+ssh_client_alive_set if {
+	input.ssh_client_alive_interval > 0
+	input.ssh_client_alive_interval <= 300
 }
 
-findings contains finding if {
-	not firewall_active
-	finding := {
-		"rule": "firewall_active",
-		"severity": "high",
-		"message": "Host firewall is not active",
-	}
+# ── Kernel Parameters ───────────────────────────────────────────────
+
+sysctl_accept_redirects_disabled if {
+	input.sysctl_accept_redirects == 0
 }
 
-findings contains finding if {
-	some cve in input.open_cves
-	finding := {
-		"rule": "open_cve",
-		"severity": "critical",
-		"message": sprintf("Unresolved CVE: %s", [cve]),
-	}
+sysctl_send_redirects_disabled if {
+	input.sysctl_send_redirects == 0
 }
 
-# Host is compliant when no critical or high findings exist
-compliant if {
-	not httpd_vulnerable
-	selinux_enforcing
-	backup_current
-	firewall_active
+sysctl_aslr_enabled if {
+	input.sysctl_randomize_va_space == 2
+}
+
+# ── File Permissions ────────────────────────────────────────────────
+
+passwd_permissions_ok if {
+	input.passwd_mode <= 644
+}
+
+shadow_permissions_ok if {
+	input.shadow_mode <= 640
+}
+
+# ── Services ────────────────────────────────────────────────────────
+
+no_unnecessary_services if {
+	input.rpcbind_enabled == false
+}
+
+# ── Vulnerability State ─────────────────────────────────────────────
+
+no_open_cves if {
 	count(input.open_cves) == 0
 }
 
-# Summary for API consumers
+# ── Control Definitions ─────────────────────────────────────────────
+
+controls := [
+	{"id": "SEL-01", "name": "SELinux enforcing", "category": "selinux", "pass": selinux_enforcing},
+	{"id": "FW-01", "name": "Firewall active", "category": "firewall", "pass": firewall_active},
+	{"id": "SSH-01", "name": "Root login disabled", "category": "ssh", "pass": ssh_root_login_disabled},
+	{"id": "SSH-02", "name": "X11 forwarding disabled", "category": "ssh", "pass": ssh_x11_forwarding_disabled},
+	{"id": "SSH-03", "name": "Max auth tries <= 4", "category": "ssh", "pass": ssh_max_auth_tries_ok},
+	{"id": "SSH-04", "name": "Client alive interval set", "category": "ssh", "pass": ssh_client_alive_set},
+	{"id": "KERN-01", "name": "ICMP redirects disabled", "category": "kernel", "pass": sysctl_accept_redirects_disabled},
+	{"id": "KERN-02", "name": "Send redirects disabled", "category": "kernel", "pass": sysctl_send_redirects_disabled},
+	{"id": "KERN-03", "name": "ASLR enabled", "category": "kernel", "pass": sysctl_aslr_enabled},
+	{"id": "FILE-01", "name": "/etc/passwd permissions <= 644", "category": "files", "pass": passwd_permissions_ok},
+	{"id": "FILE-02", "name": "/etc/shadow permissions <= 640", "category": "files", "pass": shadow_permissions_ok},
+	{"id": "SVC-01", "name": "No unnecessary services (rpcbind)", "category": "services", "pass": no_unnecessary_services},
+	{"id": "CVE-01", "name": "No open CVEs", "category": "vulnerability", "pass": no_open_cves},
+]
+
+passed_controls := [c | some c in controls; c.pass == true]
+failed_controls := [c | some c in controls; c.pass == false]
+
+compliant if {
+	count(failed_controls) == 0
+}
+
 result := {
 	"compliant": compliant,
-	"findings": findings,
-	"finding_count": count(findings),
+	"controls": controls,
+	"total": count(controls),
+	"passed": count(passed_controls),
+	"failed": count(failed_controls),
 }

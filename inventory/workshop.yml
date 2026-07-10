@@ -20,9 +20,6 @@ all:
         control:
           ansible_host: "{{ controller_ip | default('control') }}"
           ansible_user: rhel
-        vault:
-          ansible_host: "{{ vault_ip | default('vault') }}"
-          ansible_user: rhel
 
     controllers:
       hosts:

@@ -176,9 +176,45 @@
         state: present
 
     # ── Job Templates (Module 3: COMPLY) ───────────────────────────────
-    - name: Create job template -- Build Container
+    - name: Create job template -- Compliance Audit
       ansible.controller.job_template:
-        name: "Build Container"
+        name: "Compliance Audit"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/compliance-audit.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    - name: Create job template -- CIS Harden
+      ansible.controller.job_template:
+        name: "CIS Harden"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/cis-harden.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        state: present
+
+    - name: Create job template -- Compliance Report
+      ansible.controller.job_template:
+        name: "Compliance Report"
+        organization: "{{ workshop_org }}"
+        project: "{{ workshop_project_name }}"
+        playbook: "playbooks/comply/generate-compliance-report.yml"
+        inventory: "{{ workshop_inventory_name }}"
+        credential: "{{ workshop_credential_name }}"
+        execution_environment: "{{ workshop_ee_name }}"
+        extra_vars:
+          target_cve: "{{ target_cve }}"
+          target_advisory: "{{ target_advisory }}"
+        state: present
+
+    - name: Create job template -- Build Hardened Container
+      ansible.controller.job_template:
+        name: "Build Hardened Container"
         organization: "{{ workshop_org }}"
         project: "{{ workshop_project_name }}"
         playbook: "playbooks/comply/build-container.yml"
@@ -315,6 +351,85 @@
           - verify
         state: present
 
+    # ── Workflow: Compliance and Hardening ──────────────────────────────
+    - name: Create workflow -- Compliance and Hardening
+      ansible.controller.workflow_job_template:
+        name: "Compliance and Hardening"
+        organization: "{{ workshop_org }}"
+        inventory: "{{ workshop_inventory_name }}"
+        state: present
+
+    - name: Build Compliance workflow nodes
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: "{{ item.id }}"
+        unified_job_template: "{{ item.template }}"
+        organization: "{{ workshop_org }}"
+        extra_data: "{{ item.extra | default(omit) }}"
+        state: present
+      loop:
+        - { id: audit_pre, template: "Compliance Audit", extra: { audit_phase: "pre" } }
+        - { id: harden, template: "CIS Harden" }
+        - { id: audit_post, template: "Compliance Audit", extra: { audit_phase: "post" } }
+        - { id: report, template: "Compliance Report" }
+        - { id: build, template: "Build Hardened Container" }
+        - { id: scan, template: "Scan Image" }
+        - { id: push, template: "Push to Registry" }
+
+    - name: Link Compliance workflow -- audit_pre to harden
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: harden
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - audit_pre
+        state: present
+
+    - name: Link Compliance workflow -- harden to audit_post
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: audit_post
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - harden
+        state: present
+
+    - name: Link Compliance workflow -- audit_post to report
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: report
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - audit_post
+        state: present
+
+    - name: Link Compliance workflow -- report to build
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: build
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - report
+        state: present
+
+    - name: Link Compliance workflow -- build to scan
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: scan
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - build
+        state: present
+
+    - name: Link Compliance workflow -- scan to push
+      ansible.controller.workflow_job_template_node:
+        workflow_job_template: "Compliance and Hardening"
+        identifier: push
+        organization: "{{ workshop_org }}"
+        success_nodes:
+          - scan
+        state: present
+
     # ── Verification ───────────────────────────────────────────────────
     - name: Report AAP configuration status
       ansible.builtin.debug:
@@ -323,6 +438,6 @@
             Project:    {{ workshop_project_name }}
             Inventory:  {{ workshop_inventory_name }}
             Credential: {{ workshop_credential_name }}
-            Job Templates:      10 (3 defend + 4 contain + 3 comply)
-            Workflows:          2 (Vulnerability Containment, Policy-Gated Patching)
+            Job Templates:      13 (3 defend + 4 contain + 6 comply)
+            Workflows:          3 (Vulnerability Containment, Policy-Gated Patching, Compliance and Hardening)
             Approval node:      Approve Patch Application (15 min timeout)

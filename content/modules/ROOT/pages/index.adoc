@@ -11,11 +11,11 @@ Welcome to the **Defend, Contain, Comply** workshop — a hands-on Ansible Autom
 
 == What you will learn
 
-In this 120–150 minute workshop you will manage a complete vulnerability lifecycle on a RHEL system using AAP:
+In this {lab_duration} workshop you will manage a complete vulnerability lifecycle on a RHEL system using AAP:
 
 * **Module 1 — DEFEND**: Detect a critical CVE and automate containment when no patch exists
 * **Module 2 — CONTAIN**: Apply a policy-gated patching workflow once an errata is published
-* **Module 3 — COMPLY**: Containerize the hardened application for immutable deployment
+* **Module 3 — COMPLY**: Validate compliance, apply CIS hardening, generate evidence, and deliver a hardened container
 
 == Workshop environment
 

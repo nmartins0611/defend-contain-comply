@@ -1,8 +1,0 @@
----
-target_advisory: RHSA-2024:5138
-target_service: httpd
-service_port: 443
-snapshot_enabled: true
-restart_after_patch: true
-health_check_retries: 3
-health_check_delay: 5

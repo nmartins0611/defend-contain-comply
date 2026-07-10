@@ -9,7 +9,7 @@ Congratulations — you've completed the **Defend, Contain, Comply** workshop.
 
 == What you built
 
-Over the past 120 minutes, you managed a complete vulnerability lifecycle:
+Over this workshop, you managed a complete vulnerability lifecycle:
 
 [cols="1,2,2",options="header"]
 |===
@@ -20,19 +20,20 @@ Over the past 120 minutes, you managed a complete vulnerability lifecycle:
 | EDA webhooks, rulebooks, workflow triggers, firewalld, SELinux
 
 | **CONTAIN**
-| Errata published → policy-gated patch with compliance evidence
-| Workflow templates, approval nodes, assertions, set_stats, reporting
+| Errata published → OPA policy-gated patch with approval and evidence
+| Workflow templates, approval nodes, OPA queries, set_stats, reporting
 
 | **COMPLY**
-| Hardened app → containerized, scanned, pushed to trusted registry
-| containers.podman, image labels, non-root builds, registry operations
+| System audited → CIS-hardened → evidence generated → container delivered
+| OPA compliance queries, sysctl/SSH/service hardening, HTML reporting, Podman build/scan/push
 |===
 
 == Business outcomes demonstrated
 
 * **Mean-time-to-contain**: From 45+ minutes (manual SSH) to seconds (EDA + workflow)
-* **Policy enforcement**: Zero patches applied without passing all gates
-* **Audit readiness**: Compliance reports generated automatically as workflow artifacts
+* **Policy enforcement**: Zero patches applied without passing OPA policy gates
+* **Audit readiness**: Compliance reports generated automatically with before/after evidence
+* **Provable compliance**: 13 OPA-audited, CIS-hardened controls with per-control pass/fail
 * **Supply chain trust**: Every container image traceable to specific advisory remediation
 
 == Architecture recap
@@ -44,9 +45,11 @@ Splunk Alert → EDA Webhook → Containment Workflow
                                     ↓
                           Patch Available Notification
                                     ↓
-                    Pre-Patch Policy → Approval → Patch → Verify → Report
-                                                                      ↓
-                                                    Container Build → Scan → Push
+                    OPA Policy Gate → Approval → Patch → Verify → Report
+                                                                    ↓
+                                            Compliance Audit → CIS Harden → Re-Audit → Report
+                                                                                          ↓
+                                                                  Container Build → Scan → Push
 ....
 
 == Taking this further
@@ -56,6 +59,7 @@ Splunk Alert → EDA Webhook → Containment Workflow
 * **Image signing**: Add `cosign` signing to the supply chain (provenance attestation)
 * **GitOps**: Trigger container builds from Git commits to the Containerfile
 * **ITSM integration**: Connect approval nodes to ServiceNow or Jira for change tickets
+* **Extended compliance**: Add SCAP or OpenSCAP scanning alongside OPA policy checks
 
 == Resources
 

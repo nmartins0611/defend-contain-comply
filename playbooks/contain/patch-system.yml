@@ -80,6 +80,18 @@
       delay: 5
       until: _health_check is succeeded
 
+    - name: Notify Splunk of patch application
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/splunk-hec-event.yml"
+      vars:
+        splunk_event_data:
+          action: patch_applied
+          host: "{{ inventory_hostname }}"
+          advisory: "{{ target_advisory }}"
+          pre_version: "{{ _pre_patch_version.stdout }}"
+          post_version: "{{ _post_patch_version.stdout }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          message: "Advisory {{ target_advisory }} applied: {{ _pre_patch_version.stdout }} -> {{ _post_patch_version.stdout }}"
+
     - name: Set patch result facts
       ansible.builtin.set_stats:
         data:

@@ -29,15 +29,10 @@ eda_user: admin
 eda_password: "{{ eda_admin_password | default('ansible123!') }}"
 eda_webhook_port: 5000
 
-# Vault
-vault_addr: "http://{{ hostvars['vault']['ansible_host'] | default('vault') }}:8200"
-vault_token: "{{ vault_root_token | default('hvs.PLACEHOLDER') }}"
-
 # Host references
 app_server_host: rhel01
 central_host: central
 control_host: control
-vault_host: vault
 
 # AAP resource names
 workshop_org: Default

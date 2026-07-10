@@ -197,4 +197,4 @@ You've successfully completed the CONTAIN module.
 * Compliance reporting as a workflow step eliminates manual evidence gathering
 
 **Next steps:**
-Module 3 will containerize the hardened application for immutable deployment — completing the Defend, Contain, Comply lifecycle.
+Module 3 will validate and harden the system's compliance posture — proving the remediation meets organizational policy.

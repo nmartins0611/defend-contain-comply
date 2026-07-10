@@ -83,6 +83,17 @@
         create: true
         mode: "0640"
 
+    - name: Notify Splunk of containment action
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/splunk-hec-event.yml"
+      vars:
+        splunk_event_data:
+          action: containment
+          host: "{{ inventory_hostname }}"
+          service: "{{ target_service }}"
+          zone: "{{ containment_zone }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          message: "Service {{ target_service }} contained to zone {{ containment_zone }}"
+
   handlers:
     - name: Restart target service
       ansible.builtin.systemd:

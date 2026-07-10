@@ -1,4 +1,0 @@
----
-scan_output_dir: /tmp/cve-scan-results
-target_cve: CVE-2024-38476
-scan_method: yum

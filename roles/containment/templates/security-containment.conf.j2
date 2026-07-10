@@ -1,7 +1,0 @@
-# Containment security headers - deployed {{ ansible_date_time.iso8601 }}
-# Automatically applied by AAP vulnerability containment workflow
-Header always set X-Content-Type-Options "nosniff"
-Header always set X-Frame-Options "DENY"
-Header always set Content-Security-Policy "default-src 'self'"
-Header always set Referrer-Policy "strict-origin-when-cross-origin"
-Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"

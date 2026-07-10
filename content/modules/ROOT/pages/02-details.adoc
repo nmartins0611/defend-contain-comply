@@ -15,22 +15,22 @@ toc::[]
 
 | 1
 | **DEFEND** — Detect CVE via Splunk/EDA, automate containment and hardening
-| ~45 min
+| ~40 min
 
 | 2
-| **CONTAIN** — Policy-gated patching workflow with compliance verification
-| ~45 min
+| **CONTAIN** — OPA policy-gated patching workflow with compliance verification
+| ~40 min
 
 | 3
-| **COMPLY** — Build hardened container, scan, push to registry
-| ~30 min
+| **COMPLY** — Compliance audit, CIS hardening, evidence generation, container build and delivery
+| ~45 min
 
 | —
 | Wrap-up and Q&A
 | ~10 min
 |===
 
-Total: **120–150 minutes** depending on pace and discussion.
+Total: **{lab_duration}** depending on pace and discussion.
 
 == Environment details
 
@@ -90,6 +90,7 @@ The lab has been configured with:
 * EDA Controller with the Splunk webhook rulebook pre-loaded
 * AAP Controller with project, inventory, and credentials pre-configured
 * Job templates and workflow templates ready for you to examine and trigger
+* OPA policy bundles for compliance auditing and patch policy gates on central
 
 == Troubleshooting
 
