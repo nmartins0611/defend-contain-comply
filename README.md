@@ -14,7 +14,7 @@ Participants manage a complete vulnerability lifecycle — from CVE detection th
 
 ## Scenario
 
-You are a platform engineer at **Meridian Financial**. A Splunk alert fires: a critical CVE affects your customer-facing RHEL application server running `httpd`. No patch exists yet — you must contain the threat. When a patch becomes available you enforce policy-gated remediation. Finally you containerize the hardened application for immutable deployment.
+You are a platform engineer at **Benekratis Capital**. A Splunk alert fires: a critical CVE affects your customer-facing RHEL application server running `httpd`. No patch exists yet — you must contain the threat. When a patch becomes available you enforce policy-gated remediation. Finally you containerize the hardened application for immutable deployment.
 
 ## Repository Layout
 

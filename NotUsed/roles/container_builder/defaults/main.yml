@@ -1,5 +1,5 @@
 ---
-container_name: meridian-app
+container_name: benekratis-app
 container_tag: latest
 registry_url: "localhost:5000"
 base_image: registry.access.redhat.com/ubi9/ubi-minimal:latest

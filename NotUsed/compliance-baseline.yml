@@ -2,7 +2,7 @@
 # Compliance Baseline Checks (CIS-lite)
 # Subset of CIS RHEL 9 Benchmark for workshop demonstration
 baseline:
-  name: meridian-financial-cis-lite
+  name: benekratis-capital-cis-lite
   version: "1.0"
   framework: "CIS RHEL 9 Benchmark v1.0 (subset)"
   description: >
