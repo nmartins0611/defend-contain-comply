@@ -22,7 +22,7 @@ You are a platform engineer at **Benekratis Capital**. A Splunk alert fires: a c
 setup/              Pre-work playbooks (run by framework provisioner)
   deploy-central-services.yml   Splunk + OPA containers on central
   configure-errata-repo.yml     Yum errata repo on central
-  configure-app-server.yml      Vulnerable httpd + SELinux on rhel01
+  configure-rhel01.yml      Vulnerable httpd + SELinux on rhel01
   configure-aap.yml             AAP job/workflow templates
   configure-eda.yml             EDA rulebook activation
   configure-vault.yml           Vault KV paths
