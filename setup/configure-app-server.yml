@@ -55,16 +55,13 @@
         - https
 
     # ── httpd (vulnerable version) ─────────────────────────────────────
-    - name: Install vulnerable httpd version
+    - name: Install vulnerable httpd version with mod_ssl
       ansible.builtin.dnf:
-        name: "httpd-{{ vulnerable_httpd_version }}"
+        name:
+          - "httpd-{{ vulnerable_httpd_version }}"
+          - "mod_ssl-{{ vulnerable_httpd_version }}"
         state: present
         allow_downgrade: true
-
-    - name: Install mod_ssl
-      ansible.builtin.dnf:
-        name: mod_ssl
-        state: present
 
     - name: Deploy Benekratis Capital landing page
       ansible.builtin.copy:
